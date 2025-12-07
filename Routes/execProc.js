@@ -28,6 +28,7 @@ router.put("/api/execProc", authenticateToken, async (req, res) => {
     if (checkResult.length === 0) {
       return res.status(400).send(`Procedure "${procName}" not found in database.`);
     }
+console.log(">>> RAW BODY:", req.body);
 
     const paramValues = [];
     const placeholders = [];
@@ -39,8 +40,11 @@ router.put("/api/execProc", authenticateToken, async (req, res) => {
         placeholders.push("?"); // Add a placeholder for each parameter
       }
     }
-
+console.log(paramValues)
+console.log(placeholders)
+    
     const qryString = `CALL ${procName}(${placeholders.join(", ")})`;
+console.log (qryString)    
     const [resultRows] = await connection.query(qryString, paramValues);
     const finalResultSets = resultRows.filter(Array.isArray);
     res.json(finalResultSets);
