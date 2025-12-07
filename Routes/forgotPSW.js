@@ -1,22 +1,41 @@
 // routes/changePassword.js
 import express from "express";
 import bcrypt from "bcrypt";
-import { poolPromise } from "../dboperations.js";
+import { poolPromise } from "../dboperations.js"; // Exports the mysql2 promise pool
 import crypto from "crypto";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const router = express.Router();
-const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS);
+// Ensure BCRYPT_SALT_ROUNDS is available and parsed correctly
+const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10);
 
 router.post("/api/forgotpassword", async (req, res) => {
+  const { UserName } = req.body;
+  let connection; // Declare connection for proper cleanup
+
+  if (!UserName) {
+    return res.status(400).json({ message: "UserName is required" });
+  }
+  if (isNaN(SALT_ROUNDS)) {
+      console.error("BCRYPT_SALT_ROUNDS environment variable is missing or invalid.");
+      return res.status(500).json({ message: "Server configuration error." });
+  }
+
   try {
-    const pool = await poolPromise;
+    
+    connection = await poolPromise.getConnection();
+    
+    const [userRows] = await connection.query(
+      `SELECT Val AS UserName
+       FROM Misc
+       WHERE cat='UROLE' and Val = ? 
+       LIMIT 1`,
+      [UserName] // Pass parameter values as an array
+    );
 
-    // Get current stored hash
-    const result = await pool.request()
-      .input("UserName", req.body.UserName)
-      .query(`SELECT top 1 Cat from tblUser where UserName = @UserName`);
-
-    if (result.recordset.length === 0) {
+    if (userRows.length === 0) {
       return res.status(404).json({ message: "User not found" });
     }
 
@@ -24,16 +43,22 @@ router.post("/api/forgotpassword", async (req, res) => {
     const tempHash = await bcrypt.hash(tempPassword, SALT_ROUNDS);
 
 
-    // Update DB
-    await pool.request()
-      .input("UserName", req.body.UserName)
-      .input("tempHash", tempHash)
-      .query(`UPDATE tblUser set SavedPSW = @tempHash WHERE UserName = @UserName`);
+    await connection.query(
+      `UPDATE Misc 
+      SET objJson = JSON_SET(objJson, '$.fid', ?)
+      where cat='UROLE' and Val = ? `,
+      [tempHash, UserName] // Bind parameters in order: [value for SavedPSW, value for UserName]
+    );
 
-    res.json({ message: "OK", NewPSW: tempPassword});
+    res.json({ message: "Password reset successful. Temporary password provided.", NewPSW: tempPassword});
+    
   } catch (err) {
-    console.error("Change password error:", err);
-    res.status(500).json({ message: "Error. Internal server error" });
+    console.error("Forgot password error:", err);
+    res.status(500).json({ message: err.message });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 });
 
