@@ -5,6 +5,8 @@ import { authenticateToken } from "../middleware/auth.js"; // 🔹 central auth 
 const router = express.Router();
 // ===== Protected: generic CALL function (MySQL) =====
 router.post("/api/execProc", authenticateToken, async (req, res) => {
+
+  console.log(">>> RAW BODY:", req.body);  
   let connection; // Declare connection for proper cleanup
   try {
     const { procName, ...params } = req.body;
