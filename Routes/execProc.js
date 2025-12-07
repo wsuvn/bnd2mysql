@@ -3,7 +3,17 @@ import { poolPromise } from "../dboperations.js"; // This exports the mysql2 pro
 import { authenticateToken } from "../middleware/auth.js"; // 🔹 central auth middleware
 
 const router = express.Router();
-
+const sanitizeValue = (value) => {
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            return JSON.stringify(parsed);
+        } catch (e) {
+            return value;
+        }
+    }
+    return value;
+};
 // ===== Protected: generic CALL function (MySQL) =====
 router.put("/api/execProc", authenticateToken, async (req, res) => {
   let connection; // Declare connection for proper cleanup
@@ -33,10 +43,13 @@ router.put("/api/execProc", authenticateToken, async (req, res) => {
     const paramValues = [];
     const placeholders = [];
 
-    // Filter and collect parameter values dynamically
+    // Filter, collect, and sanitize parameter values dynamically
     for (const [key, value] of Object.entries(params)) {
       if (key.startsWith("para")) {
-        paramValues.push(value);
+        // Apply the sanitization/JSON check logic
+        const sanitizedValue = sanitizeValue(value);
+        
+        paramValues.push(sanitizedValue);
         placeholders.push("?"); // Add a placeholder for each parameter
       }
     }
