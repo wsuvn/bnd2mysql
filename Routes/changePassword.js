@@ -35,14 +35,8 @@ router.post("/api/changepassword", authenticateToken, async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
     }
-    
+   
     const user = rows[0];
-
-    const isMatch = await bcrypt.compare(oldPassword, user.SavedPSW);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid current password' });
-    }
-
     const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
 
     const [result] = await connection.query(
