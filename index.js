@@ -5,7 +5,7 @@ import cors from "cors";
 import loginRouter from "./Routes/login.js";
 import changePasswordRouter from "./Routes/changePassword.js";
 import forgotPasswordRouter from "./Routes/forgotPSW.js";
-import SelectData from "./Routes/selectData.js";
+import singleQuery from "./Routes/singleQuery.js";
 import execProc from "./Routes/execProc.js";
 import updateSingleTable from "./Routes/updateTable.js";
 
@@ -27,7 +27,7 @@ app.use(cors(corsOptions));
 app.use(loginRouter);
 app.use(changePasswordRouter);
 app.use(forgotPasswordRouter);
-app.use(SelectData);
+app.use(singleQuery);
 app.use(execProc);
 app.use(updateSingleTable);
 
