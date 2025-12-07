@@ -12,12 +12,9 @@ const router = express.Router();
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10);
 
 router.post("/api/changepassword", authenticateToken, async (req, res) => {
-  const { oldPassword, newPassword } = req.body; 
+  const { newPassword } = req.body; 
   let connection;
 
-  if (!oldPassword || !newPassword) {
-    return res.status(400).json({ message: "Both oldPassword and newPassword are required" });
-  }
   if (isNaN(SALT_ROUNDS)) {
       console.error("BCRYPT_SALT_ROUNDS environment variable is missing or invalid.");
       return res.status(500).json({ message: "Server configuration error." });
