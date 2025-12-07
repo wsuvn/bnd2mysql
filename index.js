@@ -13,6 +13,10 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log("🔥 Incoming:", req.method, req.url);
+  next();
+});
 
 // ===== CORS =====
 const corsOptions = {
