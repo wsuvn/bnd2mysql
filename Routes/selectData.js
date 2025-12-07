@@ -1,54 +1,25 @@
 import express from "express";
-import { poolPromise } from "../dboperations.js";
-import { authenticateToken } from "../middleware/auth.js";  // 🔹 central auth middleware
+import { poolPromise } from "../dboperations.js"; // Exports the mysql2 promise pool
+import { authenticateToken } from "../middleware/auth.js"; // 🔹 central auth middleware
 
 const router = express.Router();
 
-// ===== Protected: generic SELECT function =====
-router.get("/api/SelectData", authenticateToken, async (req, res) => {
+// ===== Protected: generic single table UPDATE function (MySQL) =====
+router.put("/api/singleQuery", authenticateToken, async (req, res) => {
+  let connection;
   try {
-    const { funcName, orderBy, ...params } = req.query;
-    if (!funcName) return res.status(400).send("Function name required");
-
-    const pool = await poolPromise;
-
-    // ✅ Validate function exists in DB
-    const checkFunc = await pool.request()
-      .input("funcName", funcName)
-      .query(`
-        SELECT name 
-        FROM sys.objects 
-        WHERE type IN ('FN','IF','TF') AND name = @funcName
-      `);
-
-    if (checkFunc.recordset.length === 0) {
-      return res.status(400).send("Function not found");
-    }
-
-    const request = pool.request();
-    let paramIndex = 0;
-    const placeholders = [];
-
-    // add parameters dynamically
-    for (const [_, value] of Object.entries(params)) {
-      paramIndex++;
-      const paramName = `param${paramIndex}`;
-      request.input(paramName, value);
-      placeholders.push(`@${paramName}`);
-    }
-
-    let qryString = `SELECT * FROM ${funcName}(${placeholders.join(", ")})`;
-
-    if (orderBy) {
-      // ❗ ensure orderBy is safe — right now it’s raw SQL
-      qryString += ` ORDER BY ${orderBy}`;
-    }
-
-    const result = await request.query(qryString);
-    res.json(result.recordset);
-
+    const { qryString } = req.body;
+    connection = await poolPromise.getConnection();
+    const [resultRows] = await connection.query(qryString);
+    const finalResultSets = resultRows.filter(Array.isArray);
+    res.json(finalResultSets);
   } catch (err) {
-    res.status(500).send("Database error");
+    console.error("Database or API error:", err);
+    res.status(500).send(`Server error: ${err.message}`);
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 });
 
