@@ -6,7 +6,6 @@ const router = express.Router();
 // ===== Protected: generic CALL function (MySQL) =====
 router.post("/api/execProc", authenticateToken, async (req, res) => {
 
-  console.log(">>> RAW BODY:", req.body);  
   let connection; // Declare connection for proper cleanup
   try {
     const { procName, ...params } = req.body;
@@ -30,8 +29,6 @@ router.post("/api/execProc", authenticateToken, async (req, res) => {
     if (checkResult.length === 0) {
       return res.status(400).send(`Procedure "${procName}" not found in database.`);
     }
-console.log(">>> RAW BODY:", req.body);
-
     const paramValues = [];
     const placeholders = [];
 
@@ -42,14 +39,24 @@ console.log(">>> RAW BODY:", req.body);
         placeholders.push("?"); // Add a placeholder for each parameter
       }
     }
-console.log(paramValues)
-console.log(placeholders)
     
     const qryString = `CALL ${procName}(${placeholders.join(", ")})`;
-console.log (qryString)    
     const [resultRows] = await connection.query(qryString, paramValues);
-    const finalResultSets = resultRows.filter(Array.isArray);
-    res.json(finalResultSets);
+    let cleanResult = [];
+    
+    // MySQL returns nested arrays and OkPackets — we keep only arrays of rows
+    if (Array.isArray(resultRows)) {
+      cleanResult = resultRows.filter(
+        (item) => Array.isArray(item) && item.length > 0
+      );
+    }
+    
+    // If no resultsets, return "ok"
+    if (cleanResult.length === 0) {
+      return res.json({ status: "ok" });
+    }
+    
+    return res.json(cleanResult);
 
   } catch (err) {
     console.error("🔥 execProc ERROR:", err);   // <-- add this
