@@ -5,7 +5,7 @@ import { authenticateToken } from "../middleware/auth.js"; // 🔹 central auth 
 const router = express.Router();
 
 // ===== Protected: generic single table UPDATE function (MySQL) =====
-router.put("/api/updateSingleTable", authenticateToken, async (req, res) => {
+router.post("/api/updateSingleTable", authenticateToken, async (req, res) => {
   let connection;
   try {
     const { tableName: tblName, Condi: dkWhere, CondiParams: dkParams = [], ...updateFields } = req.body;
