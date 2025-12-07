@@ -1,56 +1,59 @@
 import express from "express";
-import { poolPromise } from "../dboperations.js";
-import { authenticateToken } from "../middleware/auth.js";  // 🔹 central auth middleware
+import { poolPromise } from "../dboperations.js"; // This exports the mysql2 promise pool
+import { authenticateToken } from "../middleware/auth.js"; // 🔹 central auth middleware
 
 const router = express.Router();
 
-// ===== Protected: generic SELECT function =====
+// ===== Protected: generic CALL function (MySQL) =====
 router.put("/api/execProc", authenticateToken, async (req, res) => {
+  let connection; // Declare connection for proper cleanup
   try {
     const { procName, ...params } = req.body;
-
-    // Validate input early
+    
     if (!procName) {
       return res.status(400).send("Procedure name required");
     }
 
-    const checkFunc = await pool.request()
-      .input("procName", procName)
-      .query(`
-        SELECT name 
-        FROM sys.objects 
-        WHERE type ='P' AND name = @procName
-      `);
+    connection = await poolPromise.getConnection();
+    const [checkResult] = await connection.query(
+      `
+        SELECT ROUTINE_NAME 
+        FROM INFORMATION_SCHEMA.ROUTINES 
+        WHERE ROUTINE_TYPE = 'PROCEDURE' 
+        AND ROUTINE_SCHEMA = DATABASE() 
+        AND ROUTINE_NAME = ?
+      `,
+      [procName] // MySQL uses '?' placeholders for safety
+    );
 
-    if (checkFunc.recordset.length === 0) {
-      return res.status(400).send("Proc not found");
+    if (checkResult.length === 0) {
+      return res.status(400).send(`Procedure "${procName}" not found in database.`);
     }
-      
-    const request = (await poolPromise).request();
 
-    // Bind parameters dynamically
-    let paramIndex = 0;
+    const paramValues = [];
+    const placeholders = [];
+
+    // Filter and collect parameter values dynamically
     for (const [key, value] of Object.entries(params)) {
       if (key.startsWith("para")) {
-        paramIndex++;
-        request.input(`param${paramIndex}`, value);
+        paramValues.push(value);
+        placeholders.push("?"); // Add a placeholder for each parameter
       }
     }
 
-    // Build exec string with parameter placeholders
-    const placeholders = Object.keys(params)
-      .filter((k) => k.startsWith("para"))
-      .map((_, i) => `@param${i + 1}`)
-      .join(", ");
+    const qryString = `CALL ${procName}(${placeholders.join(", ")})`;
+    const [resultRows] = await connection.query(qryString, paramValues);
+    const finalResultSets = resultRows.filter(Array.isArray);
+    res.json(finalResultSets);
 
-    const qryString = `EXEC ${procName} ${placeholders}`;
-    const result = await request.query(qryString);
-
-    res.json(result.recordsets);
   } catch (err) {
-    res.status(500).send(err.message);
+    console.error("Database or API error:", err);
+    res.status(500).send(`Server error: ${err.message}`);
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 });
-
 
 export default router;
