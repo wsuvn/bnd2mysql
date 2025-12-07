@@ -52,7 +52,7 @@ console.log (qryString)
     res.json(finalResultSets);
 
   } catch (err) {
-    console.error("Database or API error:", err);
+    console.error("🔥 execProc ERROR:", err);   // <-- add this
     res.status(500).send(`Server error: ${err.message}`);
   } finally {
     if (connection) {
