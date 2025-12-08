@@ -9,7 +9,7 @@ router.post("/api/singleQuery", authenticateToken, async (req, res) => {
   let connection;
   const { qryString } = req.body;
   console.log(qryString)
-  if (qryString.substring(0,6).toUpperCase()!='SELECT'){return)
+  if (qryString.substring(0,6).toUpperCase()!='SELECT'){return}
   try {
     connection = await poolPromise.getConnection();
     const [resultRows] = await connection.query(qryString);
