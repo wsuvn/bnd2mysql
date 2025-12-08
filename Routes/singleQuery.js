@@ -11,8 +11,21 @@ router.post("/api/singleQuery", authenticateToken, async (req, res) => {
     const { qryString } = req.body;
     connection = await poolPromise.getConnection();
     const [resultRows] = await connection.query(qryString);
-    const finalResultSets = resultRows.filter(Array.isArray);
-    res.json(finalResultSets);
+    let cleanResult = [];
+    
+    // MySQL returns nested arrays and OkPackets — we keep only arrays of rows
+    if (Array.isArray(resultRows)) {
+      cleanResult = resultRows.filter(
+        (item) => Array.isArray(item) && item.length > 0
+      );
+    }
+    
+    // If no resultsets, return "ok"
+    if (cleanResult.length === 0) {
+      return res.json({ status: "ok" });
+    }
+    
+    return res.json(cleanResult);
   } catch (err) {
     console.error("Database or API error:", err);
     res.status(500).send(`Server error: ${err.message}`);
