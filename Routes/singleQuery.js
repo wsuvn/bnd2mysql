@@ -6,35 +6,31 @@ const router = express.Router();
 
 // ===== Protected: generic single table UPDATE function (MySQL) =====
 router.post("/api/singleQuery", authenticateToken, async (req, res) => {
-  let connection;
-  const { qryString } = req.body;
-  console.log(qryString)
-  if (qryString.substring(0,6).toUpperCase()!='SELECT'){return}
-  try {
+    const { qryString } = req.body;
+
+    if (!qryString || typeof qryString !== "string") {
+      return res.status(400).json({ message: "Missing qryString" });
+    }
+
+    if (!qryString.trim().toUpperCase().startsWith("SELECT")) {
+      return res.status(403).json({ message: "Only SELECT queries allowed" });
+    }
+
+    console.log("📌 Running query:", qryString);
+
     connection = await poolPromise.getConnection();
-    const [resultRows] = await connection.query(qryString);
-    let cleanResult = [];
-    
-    // MySQL returns nested arrays and OkPackets — we keep only arrays of rows
-    if (Array.isArray(resultRows)) {
-      cleanResult = resultRows.filter(
-        (item) => Array.isArray(item) && item.length > 0
-      );
-    }
-    
-    // If no resultsets, return "ok"
-    if (cleanResult.length === 0) {
-      return res.json({ status: "ok" });
-    }
-    
-    return res.json(cleanResult);
+    const [rows] = await connection.query(qryString);
+
+    console.log("📌 RAW ROWS:", rows);
+
+    // rows is ALWAYS the actual SELECT results
+    return res.json(rows);
+
   } catch (err) {
-    console.error("Database or API error:", err);
-    res.status(500).send(`Server error: ${err.message}`);
+    console.error("🔥 singleQuery ERROR:", err);
+    return res.status(500).json({ message: err.message });
   } finally {
-    if (connection) {
-      connection.release();
-    }
+    if (connection) connection.release();
   }
 });
 
