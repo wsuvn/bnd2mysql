@@ -62,7 +62,7 @@ router.post("/api/execProc", authenticateToken, async (req, res) => {
     }
     
     // If no resultsets, return "ok"
-    if (cleanResult.length === 0) {
+    if (parsedRows.length === 0) {
       return res.json({ status: "ok" });
     }
 
