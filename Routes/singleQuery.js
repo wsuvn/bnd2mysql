@@ -6,6 +6,9 @@ const router = express.Router();
 
 // ===== Protected: generic single table UPDATE function (MySQL) =====
 router.post("/api/singleQuery", authenticateToken, async (req, res) => {
+  let connection;  // you need this
+
+  try {
     const { qryString } = req.body;
 
     if (!qryString || typeof qryString !== "string") {
@@ -23,7 +26,6 @@ router.post("/api/singleQuery", authenticateToken, async (req, res) => {
 
     console.log("📌 RAW ROWS:", rows);
 
-    // rows is ALWAYS the actual SELECT results
     return res.json(rows);
 
   } catch (err) {
