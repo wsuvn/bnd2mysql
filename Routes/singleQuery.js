@@ -28,6 +28,10 @@ router.post("/api/singleQuery", authenticateToken, async (req, res) => {
     }
     connection = await poolPromise.getConnection();
     const [rows] = await connection.query(qryString);
+
+    if (qryString.trim().toUpperCase().startsWith("INSERT")) {
+      return res.status(200).json({ message: "Inserted" });
+    }    
     
     const parsedRows = rows.map(r => {
       return Object.fromEntries(
