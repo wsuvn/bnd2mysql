@@ -7,8 +7,10 @@ const router = express.Router();
 // ===== Protected: generic single table UPDATE function (MySQL) =====
 router.post("/api/singleQuery", authenticateToken, async (req, res) => {
   let connection;
+  const { qryString } = req.body;
+  console.log(qryString)
+  if (qryString.substring(0,6).toUpperCase()!='SELECT'){return)
   try {
-    const { qryString } = req.body;
     connection = await poolPromise.getConnection();
     const [resultRows] = await connection.query(qryString);
     let cleanResult = [];
