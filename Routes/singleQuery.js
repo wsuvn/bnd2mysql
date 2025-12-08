@@ -3,6 +3,14 @@ import { poolPromise } from "../dboperations.js"; // Exports the mysql2 promise 
 import { authenticateToken } from "../middleware/auth.js"; // 🔹 central auth middleware
 
 const router = express.Router();
+const safeParseJSON = (value) => {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    return value; // not valid JSON, leave as-is
+  }
+};
 
 // ===== Protected: generic single table UPDATE function (MySQL) =====
 router.post("/api/singleQuery", authenticateToken, async (req, res) => {
@@ -23,10 +31,15 @@ router.post("/api/singleQuery", authenticateToken, async (req, res) => {
 
     connection = await poolPromise.getConnection();
     const [rows] = await connection.query(qryString);
+    
+    const parsedRows = rows.map(r => {
+      return Object.fromEntries(
+        Object.entries(r).map(([key, val]) => [key, safeParseJSON(val)])
+      );
+    });
+    console.log("📌 RAW ROWS:", parsedRows);
 
-    console.log("📌 RAW ROWS:", rows);
-
-    return res.json(rows);
+    return res.json(parsedRows);
 
   } catch (err) {
     console.error("🔥 singleQuery ERROR:", err);
