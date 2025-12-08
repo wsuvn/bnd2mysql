@@ -23,8 +23,8 @@ router.post("/api/singleQuery", authenticateToken, async (req, res) => {
       return res.status(400).json({ message: "Missing qryString" });
     }
 
-    if (!qryString.trim().toUpperCase().startsWith("SELECT")) {
-      return res.status(403).json({ message: "Only SELECT queries allowed" });
+    if (!qryString.trim().toUpperCase().startsWith("SELECT") && !qryString.trim().toUpperCase().startsWith("INSERT")) {
+      return res.status(403).json({ message: "Invalid Action" });
     }
     connection = await poolPromise.getConnection();
     const [rows] = await connection.query(qryString);
