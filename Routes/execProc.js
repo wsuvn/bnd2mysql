@@ -3,6 +3,14 @@ import { poolPromise } from "../dboperations.js"; // This exports the mysql2 pro
 import { authenticateToken } from "../middleware/auth.js"; // 🔹 central auth middleware
 
 const router = express.Router();
+const safeParseJSON = (value) => {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    return value; // not valid JSON, leave as-is
+  }
+};
 // ===== Protected: generic CALL function (MySQL) =====
 router.post("/api/execProc", authenticateToken, async (req, res) => {
 
@@ -42,22 +50,23 @@ router.post("/api/execProc", authenticateToken, async (req, res) => {
     
     const qryString = `CALL ${procName}(${placeholders.join(", ")})`;
     const [resultRows] = await connection.query(qryString, paramValues);
-    let cleanResult = [];
+    let parsedRows = [];
     
     // MySQL returns nested arrays and OkPackets — we keep only arrays of rows
     if (Array.isArray(resultRows)) {
-      cleanResult = resultRows.filter(
-        (item) => Array.isArray(item) && item.length > 0
-      );
+      parsedRows = resultRows.map(r => {
+        return Object.fromEntries(
+          Object.entries(r).map(([key, val]) => [key, safeParseJSON(val)])
+        );
+      });
     }
     
     // If no resultsets, return "ok"
     if (cleanResult.length === 0) {
       return res.json({ status: "ok" });
     }
-    
-    return res.json(cleanResult);
 
+    return res.json(parsedRows);
   } catch (err) {
     console.error("🔥 execProc ERROR:", err);   // <-- add this
     res.status(500).send(`Server error: ${err.message}`);
