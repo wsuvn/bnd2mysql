@@ -26,9 +26,6 @@ router.post("/api/singleQuery", authenticateToken, async (req, res) => {
     if (!qryString.trim().toUpperCase().startsWith("SELECT")) {
       return res.status(403).json({ message: "Only SELECT queries allowed" });
     }
-
-    console.log("📌 Running query:", qryString);
-
     connection = await poolPromise.getConnection();
     const [rows] = await connection.query(qryString);
     
@@ -37,12 +34,10 @@ router.post("/api/singleQuery", authenticateToken, async (req, res) => {
         Object.entries(r).map(([key, val]) => [key, safeParseJSON(val)])
       );
     });
-    console.log("📌 RAW ROWS:", parsedRows);
 
     return res.json(parsedRows);
 
   } catch (err) {
-    console.error("🔥 singleQuery ERROR:", err);
     return res.status(500).json({ message: err.message });
   } finally {
     if (connection) connection.release();
